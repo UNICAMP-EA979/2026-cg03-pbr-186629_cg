@@ -50,13 +50,25 @@ class OpenGLRenderer(Renderer):
 
         ## SEU CÓDIGO AQUI ######################################################
         # Inicializa o GLFW, core profile e OpenGL 3.3
-
+        # Raciocínio: GLFW é a biblioteca para criar janelas e contextos OpenGL.
+        # Configuramos para usar OpenGL 3.3 Core Profile, que é mais moderno e seguro.
+        glfw.init()
+        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
+        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
+        glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
         #########################################################################
 
         ## SEU CÓDIGO AQUI ######################################################
         # Cria a janela, associando ela ao contexto
         # e configurando o tamanho dela no OpenGl
-
+        # Raciocínio: glfw.create_window cria a janela com as dimensões especificadas.
+        # glfw.make_context_current torna o contexto OpenGL da janela ativo para essa thread.
+        # glfw.swap_interval(1) ativa vsync para evitar tearing.
+        # GL.glViewport configura a área de desenho.
+        window = glfw.create_window(screen_width, screen_height, "MyApp", None, None)
+        glfw.make_context_current(window)
+        glfw.swap_interval(1)
+        GL.glViewport(0, 0, screen_width, screen_height)
         #########################################################################
 
         ## SEU CÓDIGO AQUI ######################################################
@@ -105,10 +117,15 @@ class OpenGLRenderer(Renderer):
 
         glfw.set_window_title(self._window, name)
 
-        ## SEU CÓDIGO AQUI ######################################################
+       ## SEU CÓDIGO AQUI ######################################################
         # Limpe os buffers de cor e profundidade (COLOR_BUFFER e DEPTH_BUFFER)
         # Para o de cor, utilize a cor self.background_color
-
+        # Raciocínio: glClearColor define a cor usada para limpar.
+        # glClear limpa os buffers especificados com essa cor.
+        # Limpar profundidade é essencial para depth testing correto.
+        GL.glClearColor(self.background_color[0], self.background_color[1], 
+                       self.background_color[2], self.background_color[3])
+        GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         #########################################################################
 
     def validate(self, node: Node, model_transformation: np.ndarray) -> bool:
@@ -156,7 +173,12 @@ class OpenGLRenderer(Renderer):
         # uniform para todo uso do material.
         #
         # Atente-se que os valores precisam ser convertidos para np.float32
-
+        # Raciocínio: As matrizes de transformação são essenciais para converter
+        # coordenadas do espaço local do objeto para o espaço de projeção da câmera.
+        # model -> world -> view -> projection space.
+        material.shader.set_uniform("modelTransformation", model_transformation.astype(np.float32))
+        material.shader.set_uniform("viewTransformation", self._view_matrix.astype(np.float32))
+        material.shader.set_uniform("projectionMatrix", self._projection_matrix.astype(np.float32))
         #########################################################################
 
         ## SEU CÓDIGO AQUI ######################################################
@@ -212,7 +234,9 @@ class OpenGLRenderer(Renderer):
 
         ## SEU CÓDIGO AQUI ######################################################
         # Troque o buffer frontal e traseiro, mostrando o novo buffer renderizado
-
+        # Raciocínio: Double buffering evita flickering. Enquanto renderizamos
+        # no back buffer, o front buffer é exibido. Depois trocamos.
+        glfw.swap_buffers(self._window)
         #########################################################################
 
         glfw.poll_events()
