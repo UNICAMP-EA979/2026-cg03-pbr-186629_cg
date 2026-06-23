@@ -8,7 +8,7 @@ import numpy as np
 from OpenGL import GL
 
 from urenderer.geometry.mesh import Mesh
-from urenderer.node import Camera, Light, Node
+from urenderer.node import Camera, Light, LightType, Node
 from urenderer.renderer.renderer import Renderer
 from urenderer.utils import get_filename_unique
 
@@ -73,7 +73,16 @@ class OpenGLRenderer(Renderer):
 
         ## SEU CÓDIGO AQUI ######################################################
         # Habilite o uso de GL_FRAMEBUFFER_SRGB para convertor cores para sRGB
-
+        # 
+        # Explicação: Quando ativo, o framebuffer converte automaticamente
+        # valores RGB lineares para sRGB (gamma correction) antes de exibir.
+        # Sem isso, as cores aparecerão muito claras no monitor.
+        # 
+        # Processo:
+        # 1. Calculamos cor em RGB linear (nossos shaders)
+        # 2. GL_FRAMEBUFFER_SRGB converte automaticamente: RGB → sRGB
+        # 3. Monitor exibe a cor corrigida
+        GL.glEnable(GL.GL_FRAMEBUFFER_SRGB)
         #########################################################################
 
         glfw.set_framebuffer_size_callback(
@@ -189,10 +198,69 @@ class OpenGLRenderer(Renderer):
         #
         # Utilize o método set_uniform do shader
 
+        # Iterar sobre todas as luzes que foram processadas pelo validate()
         for i, light_info in enumerate(self._lights):
             light = cast(Light, light_info["node"])
             light_position = cast(np.ndarray, light_info["position"])
-
+             
+            # ================================================================
+            # ENVIAR TIPO DE LUZ
+            # ================================================================
+            # O tipo de luz (LIGHT_DIRECTIONAL=1 ou LIGHT_POINT=2) é necessário
+            # para o shader saber qual fórmula usar (atenuação, direção, etc)
+            # light.light_type é um enum, então usamos .value para obter o int
+            material.shader.set_uniform(f"lights[{i}].type", int(light.light_type.value))
+             
+            # ================================================================
+            # ENVIAR COR × INTENSIDADE
+            # ================================================================
+            # Multiplicamos a cor base pela intensidade da luz
+            # Exemplo: cor=[1,0,0] (vermelho) × intensidade=2.0 = [2,0,0]
+            # Um valor > 1.0 significa luz super brilhante (HDR)
+            # 
+            # Nota: Combinamos em um único envio para eficiência
+            light_color_with_intensity = light.light_color * light.light_intensity
+            material.shader.set_uniform(f"lights[{i}].color", 
+                                       light_color_with_intensity.astype(np.float32))
+             
+            # ================================================================
+            # ENVIAR DADOS ESPECÍFICOS DO TIPO DE LUZ
+            # ================================================================
+             
+            if light.light_type == LightType.DIRECTIONAL:
+                # ============================================================
+                # LUZ DIRECIONAL: Enviar direção normalizada
+                # ============================================================
+                # A direção foi calculada a partir da rotação do nó
+                # light.light_direction já retorna um vetor normalizado
+                # Este vetor aponta na direção que a luz "emite"
+                material.shader.set_uniform(f"lights[{i}].direction", 
+                                           light.light_direction.astype(np.float32))
+                 
+            elif light.light_type == LightType.POINT:
+                # ============================================================
+                # LUZ PONTUAL: Enviar posição e distância de referência
+                # ============================================================
+                # light_position: Já foi transformada para world space em validate()
+                # Esta é a posição da lâmpada no mundo
+                material.shader.set_uniform(f"lights[{i}].position", 
+                                           light_position.astype(np.float32))
+                 
+                # reference_distance: Distância onde a atenuação = 1.0
+                # Valores típicos: 1.0 (padrão) até 10.0 (luz muito intensa)
+                material.shader.set_uniform(f"lights[{i}].reference_distance", 
+                                           float(light.light_reference_distance))
+         
+        # ====================================================================
+        # MARCAR FIM DO ARRAY DE LUZES
+        # ====================================================================
+        # O shader itera sobre o array lights[] até encontrar type==LIGHT_UNSET
+        # Por isso, precisamos marcar o primeiro slot vazio como inválido
+        if len(self._lights) < 10:  # MAX_LIGHT = 10
+            # Enviar LIGHT_UNSET no primeiro slot vazio
+            # Constante: LIGHT_UNSET = 0
+            material.shader.set_uniform(f"lights[{len(self._lights)}].type", 0)
+         
         #########################################################################
 
         ## SEU CÓDIGO AQUI ######################################################

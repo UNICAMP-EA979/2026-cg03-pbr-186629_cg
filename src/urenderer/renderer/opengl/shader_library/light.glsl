@@ -20,13 +20,34 @@ float computeLightAttenuation(Light light, vec3 position)
 {
     if(light.type == LIGHT_DIRECTIONAL)
     {
+        return 1.0;
     }
+    
+    if(light.type == LIGHT_POINT)
+    {
+        float distance = length(light.position - position);
+        distance = max(distance, R_MIN);
+        float attenuation = (light.reference_distance / distance);
+        return attenuation * attenuation;
+    }
+    
+    return 0.0;
 }
 
 //Calcula a direção da luz
 vec3 computeLightDirection(Light light, vec3 position)
 {
-
+    if(light.type == LIGHT_DIRECTIONAL)
+    {
+        return normalize(light.direction);
+    }
+    
+    if(light.type == LIGHT_POINT)
+    {
+        return normalize(light.position - position);
+    }
+    
+    return vec3(0.0);
 }
 
 #define LIBRARY_LIGHT
