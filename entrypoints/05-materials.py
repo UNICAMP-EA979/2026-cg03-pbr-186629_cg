@@ -26,70 +26,68 @@ if __name__ == "__main__":
     
     shader = urenderer.renderer.Shader(vertex_path, fragment_path)
 
-    # Criar texturas programaticamente
-    # Material 1: Liso (low roughness)
-    baseColor1 = Texture(np.array([[[255, 100, 100]]], dtype=np.uint8), GL.GL_RGB, GL.GL_RGB8)
-    metallic1 = Texture(np.zeros((1, 1), np.uint8), GL.GL_RED, GL.GL_R8)
-    roughness1 = Texture(50*np.ones((1, 1), np.uint8), GL.GL_RED, GL.GL_R8)
+    bricks_path = os.path.join(script_dir, "materials", "Bricks104_1K-JPG")
+    metal_path = os.path.join(script_dir, "materials", "Metal048A_1K-JPG")
+
+    bricks_base_color = Texture.load_file(
+        os.path.join(bricks_path, "Bricks104_1K-JPG_Color.jpg"),
+        srgb=True)
+    bricks_roughness = Texture.load_file(
+        os.path.join(bricks_path, "Bricks104_1K-JPG_Roughness.jpg"))
+    bricks_metallic = Texture(np.zeros((1, 1), np.uint8), GL.GL_RED, GL.GL_R8)
+
+    metal_base_color = Texture.load_file(
+        os.path.join(metal_path, "Metal048A_1K-JPG_Color.jpg"),
+        srgb=True)
+    metal_metallic = Texture.load_file(
+        os.path.join(metal_path, "Metal048A_1K-JPG_Metalness.jpg"))
+    metal_roughness = Texture.load_file(
+        os.path.join(metal_path, "Metal048A_1K-JPG_Roughness.jpg"))
+    semi_metallic = Texture(200*np.ones((1, 1), np.uint8), GL.GL_RED, GL.GL_R8)
 
     material1 = urenderer.renderer.opengl.Material(shader)
-    material1.set_texture(0, "baseColorTexture", baseColor1)
-    material1.set_texture(1, "metallicTexture", metallic1)
-    material1.set_texture(2, "roughnessTexture", roughness1)
-    material1.set_uniform("tiling", 1.0)
-
-    # Material 2: Áspero (high roughness)
-    baseColor2 = Texture(np.array([[[100, 255, 100]]], dtype=np.uint8), GL.GL_RGB, GL.GL_RGB8)
-    metallic2 = Texture(np.zeros((1, 1), np.uint8), GL.GL_RED, GL.GL_R8)
-    roughness2 = Texture(200*np.ones((1, 1), np.uint8), GL.GL_RED, GL.GL_R8)
+    material1.set_texture(0, "baseColorTexture", bricks_base_color)
+    material1.set_texture(1, "metallicTexture", bricks_metallic)
+    material1.set_texture(2, "roughnessTexture", bricks_roughness)
+    material1.set_uniform("tiling", 10.0)
 
     material2 = urenderer.renderer.opengl.Material(shader)
-    material2.set_texture(0, "baseColorTexture", baseColor2)
-    material2.set_texture(1, "metallicTexture", metallic2)
-    material2.set_texture(2, "roughnessTexture", roughness2)
+    material2.set_texture(0, "baseColorTexture", bricks_base_color)
+    material2.set_texture(1, "metallicTexture", bricks_metallic)
+    material2.set_texture(2, "roughnessTexture", bricks_roughness)
     material2.set_uniform("tiling", 1.0)
 
-    # Material 3: Metálico
-    baseColor3 = Texture(np.array([[[200, 200, 200]]], dtype=np.uint8), GL.GL_RGB, GL.GL_RGB8)
-    metallic3 = Texture(255*np.ones((1, 1), np.uint8), GL.GL_RED, GL.GL_R8)
-    roughness3 = Texture(100*np.ones((1, 1), np.uint8), GL.GL_RED, GL.GL_R8)
-
     material3 = urenderer.renderer.opengl.Material(shader)
-    material3.set_texture(0, "baseColorTexture", baseColor3)
-    material3.set_texture(1, "metallicTexture", metallic3)
-    material3.set_texture(2, "roughnessTexture", roughness3)
-    material3.set_uniform("tiling", 2.0)
-
-    # Material 4: Semi-metálico (entre metálico e dielétrico)
-    baseColor4 = Texture(np.array([[[150, 150, 255]]], dtype=np.uint8), GL.GL_RGB, GL.GL_RGB8)
-    metallic4 = Texture(127*np.ones((1, 1), np.uint8), GL.GL_RED, GL.GL_R8)
-    roughness4 = Texture(150*np.ones((1, 1), np.uint8), GL.GL_RED, GL.GL_R8)
+    material3.set_texture(0, "baseColorTexture", metal_base_color)
+    material3.set_texture(1, "metallicTexture", metal_metallic)
+    material3.set_texture(2, "roughnessTexture", metal_roughness)
+    material3.set_uniform("tiling", 1.0)
 
     material4 = urenderer.renderer.opengl.Material(shader)
-    material4.set_texture(0, "baseColorTexture", baseColor4)
-    material4.set_texture(1, "metallicTexture", metallic4)
-    material4.set_texture(2, "roughnessTexture", roughness4)
-    material4.set_uniform("tiling", 1.5)
+    material4.set_texture(0, "baseColorTexture", metal_base_color)
+    material4.set_texture(1, "metallicTexture", semi_metallic)
+    material4.set_texture(2, "roughnessTexture", metal_roughness)
+    material4.set_uniform("tiling", 1.0)
 
     # Cria esferas utilizando os materiais
     sphere1 = urenderer.node.Node()
-    sphere1.translation = np.array([-3.75, 0, -5], np.float64)
+    sphere1.translation = np.array([-3.5, 0, -5], np.float64)
     sphere1.render_data["mesh"] = urenderer.geometry.mesh.get_mesh_sphere()
     sphere1.render_data["material"] = material1
     runtime.scene.add_child(sphere1)
 
     sphere2 = sphere1.clone()
-    sphere2.translation = np.array([-1.25, 0, -5], np.float64)
+    sphere2.translation = np.array([-1.0, 0, -5], np.float64)
     sphere2.render_data["material"] = material2
     runtime.scene.add_child(sphere2)
 
     sphere3 = sphere1.clone()
-    sphere3.translation = np.array([1.25, 0, -5], np.float64)
+    sphere3.translation = np.array([1.0, 0, -5], np.float64)
     sphere3.render_data["material"] = material3
     runtime.scene.add_child(sphere3)
 
     sphere4 = sphere1.clone()
-    sphere4.translation = np.array([3.75, 0, -5], np.float64)
+    sphere4.translation = np.array([3.5, 0, -5], np.float64)
     sphere4.render_data["material"] = material4
     runtime.scene.add_child(sphere4)
 

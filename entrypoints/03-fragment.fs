@@ -47,17 +47,16 @@ void main()
         vec3 halfAngle = normalize(viewDirection + lightDirection);
 
         //Calcule as refletância de fresnel, difusa e especular
-        float F0 = mix(0.04, 0.95, metallic);
-        float fresnel = computeFresnel(F0, viewDirection, worldNormalNormalized);
-        vec3 diffuse = computeDiffuse(baseColor, fresnel);
-        float specular = computeSpecular(fresnel, worldNormalNormalized, halfAngle, viewDirection, lightDirection, roughness);
+        vec3 fresnel = fresnelReflectance(baseColor, metallic, halfAngle, lightDirection);
+        vec3 f_diff = diffuse(baseColor, metallic, fresnel);
+        vec3 f_spec = specular(halfAngle, worldNormalNormalized, lightDirection, viewDirection, roughness, fresnel);
 
         //Calcule a refletância final
-        vec3 reflectance = diffuse + vec3(specular);
+        vec3 reflectance = f_diff + f_spec;
 
         //Calcule a contribuição da luz e acumule na color
         float cosLambda = max(0.0, dot(worldNormalNormalized, lightDirection));
-        vec3 lightContribution = lightColor * reflectance * attenuation * cosLambda;
+        vec3 lightContribution = PI * lightColor * reflectance * attenuation * cosLambda;
         color += lightContribution;
     }
 
