@@ -8,13 +8,20 @@ import urenderer
 # e escrever urenderer/renderer/opengl/shader_library/light.glsl e 01-fragment.fs para realizar o sombreamento.
 
 if __name__ == "__main__":
+    import os
+    
     urenderer.utils.clear_workdir("01-light_direction")
     renderer = urenderer.renderer.OpenGLRenderer(1920, 1080)
     renderer.background_color = np.array([0, 0, 0, 1], np.float32)
     runtime = urenderer.application.Runtime(
         renderer, name="01-light_direction")
 
-    shader = urenderer.renderer.Shader("vertex.vs", "01-fragment.fs")
+    # Obter diretório do script atual (entrypoints/)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    vertex_path = os.path.join(script_dir, "vertex.vs")
+    fragment_path = os.path.join(script_dir, "01-fragment.fs")
+    
+    shader = urenderer.renderer.Shader(vertex_path, fragment_path)
     material = urenderer.renderer.opengl.Material(shader)
 
     sphere = urenderer.node.Node()

@@ -8,7 +8,7 @@ import numpy as np
 from OpenGL import GL
 
 from urenderer.geometry.mesh import Mesh
-from urenderer.node import Camera, Light, Node
+from urenderer.node import Camera, Light, LightType, Node
 from urenderer.renderer.renderer import Renderer
 from urenderer.utils import get_filename_unique
 
@@ -50,18 +50,39 @@ class OpenGLRenderer(Renderer):
 
         ## SEU CÓDIGO AQUI ######################################################
         # Inicializa o GLFW, core profile e OpenGL 3.3
-
+        # Raciocínio: GLFW é a biblioteca para criar janelas e contextos OpenGL.
+        # Configuramos para usar OpenGL 3.3 Core Profile, que é mais moderno e seguro.
+        glfw.init()
+        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
+        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
+        glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
         #########################################################################
 
         ## SEU CÓDIGO AQUI ######################################################
         # Cria a janela, associando ela ao contexto
         # e configurando o tamanho dela no OpenGl
-
+        # Raciocínio: glfw.create_window cria a janela com as dimensões especificadas.
+        # glfw.make_context_current torna o contexto OpenGL da janela ativo para essa thread.
+        # glfw.swap_interval(1) ativa vsync para evitar tearing.
+        # GL.glViewport configura a área de desenho.
+        window = glfw.create_window(screen_width, screen_height, "MyApp", None, None)
+        glfw.make_context_current(window)
+        glfw.swap_interval(1)
+        GL.glViewport(0, 0, screen_width, screen_height)
         #########################################################################
 
         ## SEU CÓDIGO AQUI ######################################################
         # Habilite o uso de GL_FRAMEBUFFER_SRGB para convertor cores para sRGB
-
+        # 
+        # Explicação: Quando ativo, o framebuffer converte automaticamente
+        # valores RGB lineares para sRGB (gamma correction) antes de exibir.
+        # Sem isso, as cores aparecerão muito claras no monitor.
+        # 
+        # Processo:
+        # 1. Calculamos cor em RGB linear (nossos shaders)
+        # 2. GL_FRAMEBUFFER_SRGB converte automaticamente: RGB → sRGB
+        # 3. Monitor exibe a cor corrigida
+        GL.glEnable(GL.GL_FRAMEBUFFER_SRGB)
         #########################################################################
 
         glfw.set_framebuffer_size_callback(
@@ -105,10 +126,15 @@ class OpenGLRenderer(Renderer):
 
         glfw.set_window_title(self._window, name)
 
-        ## SEU CÓDIGO AQUI ######################################################
+       ## SEU CÓDIGO AQUI ######################################################
         # Limpe os buffers de cor e profundidade (COLOR_BUFFER e DEPTH_BUFFER)
         # Para o de cor, utilize a cor self.background_color
-
+        # Raciocínio: glClearColor define a cor usada para limpar.
+        # glClear limpa os buffers especificados com essa cor.
+        # Limpar profundidade é essencial para depth testing correto.
+        GL.glClearColor(self.background_color[0], self.background_color[1], 
+                       self.background_color[2], self.background_color[3])
+        GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         #########################################################################
 
     def validate(self, node: Node, model_transformation: np.ndarray) -> bool:
@@ -156,7 +182,12 @@ class OpenGLRenderer(Renderer):
         # uniform para todo uso do material.
         #
         # Atente-se que os valores precisam ser convertidos para np.float32
-
+        # Raciocínio: As matrizes de transformação são essenciais para converter
+        # coordenadas do espaço local do objeto para o espaço de projeção da câmera.
+        # model -> world -> view -> projection space.
+        material.shader.set_uniform("modelTransformation", model_transformation.astype(np.float32))
+        material.shader.set_uniform("viewTransformation", self._view_matrix.astype(np.float32))
+        material.shader.set_uniform("projectionMatrix", self._projection_matrix.astype(np.float32))
         #########################################################################
 
         ## SEU CÓDIGO AQUI ######################################################
@@ -167,17 +198,76 @@ class OpenGLRenderer(Renderer):
         #
         # Utilize o método set_uniform do shader
 
+        # Iterar sobre todas as luzes que foram processadas pelo validate()
         for i, light_info in enumerate(self._lights):
             light = cast(Light, light_info["node"])
             light_position = cast(np.ndarray, light_info["position"])
-
+             
+            # ================================================================
+            # ENVIAR TIPO DE LUZ
+            # ================================================================
+            # O tipo de luz (LIGHT_DIRECTIONAL=1 ou LIGHT_POINT=2) é necessário
+            # para o shader saber qual fórmula usar (atenuação, direção, etc)
+            # light.light_type é um enum, então usamos .value para obter o int
+            material.shader.set_uniform(f"lights[{i}].type", int(light.light_type.value))
+             
+            # ================================================================
+            # ENVIAR COR × INTENSIDADE
+            # ================================================================
+            # Multiplicamos a cor base pela intensidade da luz
+            # Exemplo: cor=[1,0,0] (vermelho) × intensidade=2.0 = [2,0,0]
+            # Um valor > 1.0 significa luz super brilhante (HDR)
+            # 
+            # Nota: Combinamos em um único envio para eficiência
+            light_color_with_intensity = light.light_color * light.light_intensity
+            material.shader.set_uniform(f"lights[{i}].color", 
+                                       light_color_with_intensity.astype(np.float32))
+             
+            # ================================================================
+            # ENVIAR DADOS ESPECÍFICOS DO TIPO DE LUZ
+            # ================================================================
+             
+            if light.light_type == LightType.DIRECTIONAL:
+                # ============================================================
+                # LUZ DIRECIONAL: Enviar direção normalizada
+                # ============================================================
+                # A direção foi calculada a partir da rotação do nó
+                # light.light_direction já retorna um vetor normalizado
+                # Este vetor aponta na direção que a luz "emite"
+                material.shader.set_uniform(f"lights[{i}].direction", 
+                                           light.light_direction.astype(np.float32))
+                 
+            elif light.light_type == LightType.POINT:
+                # ============================================================
+                # LUZ PONTUAL: Enviar posição e distância de referência
+                # ============================================================
+                # light_position: Já foi transformada para world space em validate()
+                # Esta é a posição da lâmpada no mundo
+                material.shader.set_uniform(f"lights[{i}].position", 
+                                           light_position.astype(np.float32))
+                 
+                # reference_distance: Distância onde a atenuação = 1.0
+                # Valores típicos: 1.0 (padrão) até 10.0 (luz muito intensa)
+                material.shader.set_uniform(f"lights[{i}].reference_distance", 
+                                           float(light.light_reference_distance))
+         
+        # ====================================================================
+        # MARCAR FIM DO ARRAY DE LUZES
+        # ====================================================================
+        # O shader itera sobre o array lights[] até encontrar type==LIGHT_UNSET
+        # Por isso, precisamos marcar o primeiro slot vazio como inválido
+        if len(self._lights) < 10:  # MAX_LIGHT = 10
+            # Enviar LIGHT_UNSET no primeiro slot vazio
+            # Constante: LIGHT_UNSET = 0
+            material.shader.set_uniform(f"lights[{len(self._lights)}].type", 0)
+         
         #########################################################################
 
         ## SEU CÓDIGO AQUI ######################################################
         # Defina a uniform ambientColor para self.ambient_color
         #
         # Utilize o método set_uniform do shader
-
+        material.shader.set_uniform("ambientColor", self.ambient_color)
         #########################################################################
 
         mesh.draw()
@@ -212,7 +302,9 @@ class OpenGLRenderer(Renderer):
 
         ## SEU CÓDIGO AQUI ######################################################
         # Troque o buffer frontal e traseiro, mostrando o novo buffer renderizado
-
+        # Raciocínio: Double buffering evita flickering. Enquanto renderizamos
+        # no back buffer, o front buffer é exibido. Depois trocamos.
+        glfw.swap_buffers(self._window)
         #########################################################################
 
         glfw.poll_events()

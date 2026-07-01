@@ -79,9 +79,13 @@ class Shader:
         if full_source not in Shader._program_cache:
             # Compila o programa ainda não cacheado
 
-            ## SEU CÓDIGO AQUI ######################################################
+             ## SEU CÓDIGO AQUI ######################################################
             # Cria e compila o vertex shader
-
+            # Raciocínio: Criamos um shader vazio do tipo VERTEX, fornecemos o código fonte
+            # e compilamos. O resultado é um identificador do shader compilado.
+            vertex_shader = GL.glCreateShader(GL.GL_VERTEX_SHADER)
+            GL.glShaderSource(vertex_shader, vertex_shader_source)
+            GL.glCompileShader(vertex_shader)
             #########################################################################
 
             vertex_shader = cast(int, vertex_shader)
@@ -91,7 +95,11 @@ class Shader:
 
             ## SEU CÓDIGO AQUI ######################################################
             # Cria e compila o fragment shader
-
+            # Raciocínio: Processo idêntico ao vertex shader, mas para FRAGMENT shader.
+            # Este shader define a cor final de cada pixel (fragmento).
+            fragment_shader = GL.glCreateShader(GL.GL_FRAGMENT_SHADER)
+            GL.glShaderSource(fragment_shader, fragment_shader_source)
+            GL.glCompileShader(fragment_shader)
             #########################################################################
 
             fragment_shader = cast(int, fragment_shader)
@@ -101,6 +109,9 @@ class Shader:
 
             ## SEU CÓDIGO AQUI ######################################################
             # Cria e linka o programa
+            # Raciocínio: O programa é um contêiner que combina múltiplos shaders.
+            # Attachamos os shaders compilados e linkamos. O resultado é um programa
+            # que pode ser usado para renderizar.
             shader_program = GL.glCreateProgram()
             GL.glAttachShader(shader_program, vertex_shader)
             GL.glAttachShader(shader_program, fragment_shader)
@@ -126,7 +137,9 @@ class Shader:
         '''
         ## SEU CÓDIGO AQUI ######################################################
         # Usa o programa compilado e linkado anteriormente no contexto atual
-
+        # Raciocínio: glUseProgram ativa o programa para todos os próximos comandos
+        # de renderização, até que outro programa seja ativado.
+        GL.glUseProgram(self.shader_program)
         #########################################################################
 
     def _get_uniform_location(self, name: str) -> int:

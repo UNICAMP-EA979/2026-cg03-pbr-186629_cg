@@ -30,6 +30,7 @@ class Texture:
         Raises:
             ValueError: if the texture dtype is not np.uint8
         '''
+
         if texture_data.dtype != np.uint8:
             raise ValueError(
                 f"Only uint8 texture type is supported. texture_data is {texture_data.dtype}")
@@ -39,10 +40,29 @@ class Texture:
 
         ## SEU CÓDIGO AQUI ######################################################
         # Cria a textura
+        # Raciocínio: glGenTextures cria um novo identificador de textura.
+
         # Realiza o bind no contexto
+        # Raciocínio: Depois de criar a textura, ela precisa ser vinculada para
+        # configurar seus parâmetros e dados.
+        texture_id = GL.glGenTextures(1)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, texture_id)
+
         # Define os parâmetros da textura
+        self.parameters: dict[IntConstant, int] = {}
+        for parameter, value in Texture._default_parameters.items():
+            GL.glTexParameteri(GL.GL_TEXTURE_2D, parameter, value)
+
         # Especifica os dados da textura
+        # Raciocínio: glTexImage2D carrega os dados da imagem para a textura no GPU.
+        GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, self._internal_format,
+                       texture_data.shape[1], texture_data.shape[0],
+                       0, self._data_format, GL.GL_UNSIGNED_BYTE, texture_data)
+
         # Gera os mipmaps da textura
+        # Raciocínio: Mipmaps são versões reduzidas da textura usadas para rendering
+        # de objetos distantes, melhorando qualidade e performance.
+        GL.glGenerateMipmap(GL.GL_TEXTURE_2D)
 
         #########################################################################
 
@@ -57,8 +77,12 @@ class Texture:
         '''
         ## SEU CÓDIGO AQUI ######################################################
         # Ativa a texture unit e realiza o bind da textura
-        # OBS: cada texture unit é sequencial: GL.GL_TEXTURE1 = GL.GL_TEXTURE0
-
+        # OBS: cada texture unit é sequencial: GL.GL_TEXTURE1 = GL.GL_TEXTURE0+1
+        # Raciocínio: Texture units permitem múltiplas texturas simultâneas.
+        # glActiveTexture ativa a unidade desejada, depois glBindTexture vincula
+        # a textura a essa unidade.
+        GL.glActiveTexture(GL.GL_TEXTURE0 + unit)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, self._texture_id)
         #########################################################################
 
     def set_parameter(self, parameter: IntConstant, value: int):

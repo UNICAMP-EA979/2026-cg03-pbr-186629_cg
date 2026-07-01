@@ -29,13 +29,13 @@ uniform mat4 projectionMatrix;
 
 void main()
 {
-    worldPosition =;
+    worldPosition = (modelTransformation * vec4(position, 1.0)).xyz;
 
-    worldNormal =;
+    worldNormal = (modelTransformation * vec4(normal, 0.0)).xyz;
 
-    uv =;
+    uv = vertexUV;
 
-    gl_Position =;
+    gl_Position = projectionMatrix * viewTransformation * modelTransformation * vec4(position, 1.0);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////

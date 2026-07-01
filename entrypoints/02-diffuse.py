@@ -8,13 +8,20 @@ import urenderer
 # e 02-fragment.fs para realizar o sombreamento.
 
 if __name__ == "__main__":
+    import os
+    
     urenderer.utils.clear_workdir("02-diffuse")
     renderer = urenderer.renderer.OpenGLRenderer(1920, 1080)
     renderer.background_color = np.array([0, 0, 0, 1], np.float32)
     runtime = urenderer.application.Runtime(
         renderer, name="02-diffuse")
 
-    shader = urenderer.renderer.Shader("vertex.vs", "02-fragment.fs")
+    # Obter diretorio do script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    vertex_path = os.path.join(script_dir, "vertex.vs")
+    fragment_path = os.path.join(script_dir, "02-fragment.fs")
+    
+    shader = urenderer.renderer.Shader(vertex_path, fragment_path)
     material = urenderer.renderer.opengl.Material(shader)
 
     sphere = urenderer.node.Node()
