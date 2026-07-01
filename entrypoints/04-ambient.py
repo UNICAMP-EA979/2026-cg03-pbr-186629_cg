@@ -7,6 +7,8 @@ import urenderer
 # Altere o arquivo 04-fragment.fs para adicionar luz ambiente
 
 if __name__ == "__main__":
+    import os
+    
     urenderer.utils.clear_workdir("04-ambient")
     renderer = urenderer.renderer.OpenGLRenderer(1920, 1080)
     renderer.background_color = np.array([0, 0, 0, 1], np.float32)
@@ -15,7 +17,11 @@ if __name__ == "__main__":
 
     renderer.ambient_color = np.array([0.1, 0.1, 0.1], dtype=np.float32)
 
-    shader = urenderer.renderer.Shader("vertex.vs", "04-fragment.fs")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    vertex_path = os.path.join(script_dir, "vertex.vs")
+    fragment_path = os.path.join(script_dir, "04-fragment.fs")
+    
+    shader = urenderer.renderer.Shader(vertex_path, fragment_path)
     material = urenderer.renderer.opengl.Material(shader)
 
     sphere = urenderer.node.Node()
