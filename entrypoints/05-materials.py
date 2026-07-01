@@ -60,22 +60,38 @@ if __name__ == "__main__":
     material3.set_texture(2, "roughnessTexture", roughness3)
     material3.set_uniform("tiling", 2.0)
 
+    # Material 4: Semi-metálico (entre metálico e dielétrico)
+    baseColor4 = Texture(np.array([[[150, 150, 255]]], dtype=np.uint8), GL.GL_RGB, GL.GL_RGB8)
+    metallic4 = Texture(127*np.ones((1, 1), np.uint8), GL.GL_RED, GL.GL_R8)
+    roughness4 = Texture(150*np.ones((1, 1), np.uint8), GL.GL_RED, GL.GL_R8)
+
+    material4 = urenderer.renderer.opengl.Material(shader)
+    material4.set_texture(0, "baseColorTexture", baseColor4)
+    material4.set_texture(1, "metallicTexture", metallic4)
+    material4.set_texture(2, "roughnessTexture", roughness4)
+    material4.set_uniform("tiling", 1.5)
+
     # Cria esferas utilizando os materiais
     sphere1 = urenderer.node.Node()
-    sphere1.translation = np.array([-2.5, 0, -5], np.float64)
+    sphere1.translation = np.array([-3.75, 0, -5], np.float64)
     sphere1.render_data["mesh"] = urenderer.geometry.mesh.get_mesh_sphere()
     sphere1.render_data["material"] = material1
     runtime.scene.add_child(sphere1)
 
     sphere2 = sphere1.clone()
-    sphere2.translation = np.array([0, 0, -5], np.float64)
+    sphere2.translation = np.array([-1.25, 0, -5], np.float64)
     sphere2.render_data["material"] = material2
     runtime.scene.add_child(sphere2)
 
     sphere3 = sphere1.clone()
-    sphere3.translation = np.array([2.5, 0, -5], np.float64)
+    sphere3.translation = np.array([1.25, 0, -5], np.float64)
     sphere3.render_data["material"] = material3
     runtime.scene.add_child(sphere3)
+
+    sphere4 = sphere1.clone()
+    sphere4.translation = np.array([3.75, 0, -5], np.float64)
+    sphere4.render_data["material"] = material4
+    runtime.scene.add_child(sphere4)
 
     # Luzes
     light = urenderer.node.Light(urenderer.node.LightType.DIRECTIONAL)
